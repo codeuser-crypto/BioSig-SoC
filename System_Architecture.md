@@ -281,8 +281,3 @@ INTEGRATION says HOW pieces talk: WebSocket firehose + REST trickle + shared buf
 | Live waveform | `web/static/js/ecg_chart.js` | `addSample`, `_drawTrace` |
 | WebSocket client | `web/static/js/websocket.js` | `ECGWebSocket._connect` |
 | Dashboard conductor | `web/static/js/dashboard.js` | polling + pipeline diagram |
-
----
-
-*Companion docs: `README.md` (how to run), `PROJECT_EXPLAINED.md` (plain-English
-overview), `docs/theory/` (full engineering derivations).*
