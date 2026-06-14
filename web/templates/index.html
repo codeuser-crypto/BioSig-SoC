@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BioSig SoC - Mixed-Signal ECG Acquisition System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- SECTION 1: HEADER -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">BioSig<span class="logo-accent">SoC</span></span>
+      <span class="tagline">Mixed-Signal ECG Acquisition System</span>
+    </div>
+    <div class="status-cluster">
+      <span class="pill" id="pill-conn"><span class="dot"></span> CONNECTING</span>
+      <span class="pill"><span class="dot ok"></span> 500 SPS</span>
+      <span class="pill"><span class="dot ok"></span> <span id="pill-source">UART</span></span>
+    </div>
+    <div class="header-right">
+      <a class="btn ghost" href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn ghost" href="/api/status" target="_blank">Docs</a>
+      <span class="hr-readout">&#9829; <span id="hr-header">--</span> BPM</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- SECTION 2: ECG WAVEFORM -->
+    <section class="card waveform-card">
+      <div class="card-head">
+        <h2>Live ECG</h2>
+        <div class="controls">
+          <button class="btn" id="btn-pause">&#10073;&#10073; Pause</button>
+          <button class="btn" id="btn-play">&#9654; Play</button>
+          <span class="sep"></span>
+          <span class="lbl">Gain</span>
+          <button class="btn small gain" data-gain="1">1&times;</button>
+          <button class="btn small gain active" data-gain="2">2&times;</button>
+          <button class="btn small gain" data-gain="5">5&times;</button>
+          <button class="btn small gain" data-gain="10">10&times;</button>
+          <span class="sep"></span>
+          <span class="lbl">Sweep</span>
+          <button class="btn small sweep active" data-sweep="100">25 mm/s</button>
+          <button class="btn small sweep" data-sweep="200">50 mm/s</button>
+          <span class="sep"></span>
+          <button class="btn" id="btn-export">&#128229; CSV</button>
+        </div>
+      </div>
+      <canvas id="ecg-canvas" height="380"></canvas>
+    </section>
+
+    <!-- SECTION 3: METRICS ROW -->
+    <section class="metrics-row">
+      <div class="card metric">
+        <div class="metric-label">Heart Rate</div>
+        <div class="metric-value"><span id="m-hr">--</span><span class="unit">BPM</span></div>
+        <canvas id="hr-spark" height="40"></canvas>
+      </div>
+      <div class="card metric">
+        <div class="metric-label">Signal Quality</div>
+        <div class="metric-value"><span id="m-snr">--</span><span class="unit">dB SNR</span></div>
+        <div class="sub">Noise floor <b id="m-noise">--</b> uVrms</div>
+        <div class="sub">CMRR <b id="m-cmrr">--</b> dB</div>
+      </div>
+      <div class="card metric">
+        <div class="metric-label">System Latency</div>
+        <div class="metric-value"><span id="m-lat">--</span><span class="unit">ms</span></div>
+        <div class="sub">Analog 2ms | DSP 152us | UART 1ms | Net <b id="m-net">--</b>ms</div>
+      </div>
+      <div class="card metric">
+        <div class="metric-label">Connection</div>
+        <div class="metric-value small-val"><span id="m-link">--</span></div>
+        <div class="sub">Loss <b id="m-loss">--</b>% &middot; <b id="m-rate">40.0</b> kbps</div>
+        <div class="sub">Uptime <b id="m-uptime">00:00:00</b></div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: ANALYSIS ROW -->
+    <section class="analysis-row">
+      <div class="card">
+        <div class="card-head"><h2>Real-time FFT Spectrum</h2><span class="muted">2048-point</span></div>
+        <canvas id="spectrum-canvas" height="240"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>DSP Filter Response</h2>
+          <div class="toggles">
+            <label><input type="checkbox" data-f="fir" checked> FIR</label>
+            <label><input type="checkbox" data-f="notch60" checked> 60Hz</label>
+            <label><input type="checkbox" data-f="notch50" checked> 50Hz</label>
+          </div>
+        </div>
+        <canvas id="filters-canvas" height="240"></canvas>
+      </div>
+    </section>
+
+    <!-- SECTION 5: PIPELINE DIAGRAM -->
+    <section class="card">
+      <div class="card-head"><h2>Signal Pipeline</h2><span class="muted">click a stage</span></div>
+      <div class="pipeline" id="pipeline"></div>
+      <div class="pipeline-detail" id="pipeline-detail">Select a stage to inspect its design.</div>
+    </section>
+
+    <!-- SECTION 7: PROJECT EXPLAINER -->
+    <section class="explainer-row">
+      <div class="card explainer">
+        <h3>Analog Design</h3>
+        <p>Custom 3-op-amp instrumentation amplifier (gain 500&times;, CMRR &gt;80 dB),
+        0.05 Hz high-pass for DC-offset removal, 2nd-order Sallen-Key 150 Hz
+        anti-aliasing filter, right-leg drive for common-mode rejection, and
+        IEC 60601 patient-protection input network.</p>
+      </div>
+      <div class="card explainer">
+        <h3>Firmware &amp; DSP</h3>
+        <p>Register-level STM32F411 ADC + DMA at 500 sps, double-buffered
+        block processing, dual IIR notch (50/60 Hz) plus a 128-tap linear-phase
+        FIR bandpass, Pan-Tompkins R-peak detection, all completing in ~152 us
+        per block measured with the DWT cycle counter.</p>
+      </div>
+      <div class="card explainer">
+        <h3>Wireless &amp; System</h3>
+        <p>Framed binary packets with CRC-8 and sequence numbers stream over
+        BLE/UART at 40 kbps; Python receiver verifies integrity and bridges to
+        this dashboard over WebSockets with &lt;100 ms end-to-end latency.</p>
+      </div>
+    </section>
+
+    <!-- SECTION 8: FOOTER -->
+    <footer class="footer">
+      <p>ECG acquisition meeting medical-grade spec: AHA / IEC 60601 compliant noise floor.</p>
+      <p class="resume">Designed end-to-end mixed-signal ECG acquisition system on STM32F411:
+      3-op-amp INA (500&times;, CMRR 82 dB), DMA-driven 12-bit ADC at 500 sps,
+      real-time 128-tap FIR + dual IIR notch DSP in 152 us, BLE streaming, live
+      web dashboard; noise floor 0.18 uVrms - meets AHA ECG standard.</p>
+    </footer>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/ecg_chart.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/spectrum.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/websocket.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

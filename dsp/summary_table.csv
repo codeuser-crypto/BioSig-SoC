@@ -1,0 +1,6 @@
+metric,value,unit
+noise_floor,4.795,uVrms
+notch_attenuation,10.7,dB
+heart_rate,72,BPM
+snr,43.4,dB
+rpeaks,11,count

@@ -1,0 +1,11 @@
+{
+  "fs_hz": 500.0,
+  "fir_num_taps": 128,
+  "fir_group_delay_ms": 127.0,
+  "fir_symmetric": true,
+  "fir_max_q15": 6313,
+  "notch_r": 0.985,
+  "notch60_atten_db": 239.89770552627186,
+  "notch50_atten_db": 239.93495160850233,
+  "iir_postshift": 1
+}
